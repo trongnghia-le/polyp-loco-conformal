@@ -1,0 +1,15 @@
+# Data and heavy outputs never go to git (PolypGen images stay off any public repo)
+data/
+outputs/
+# Local-only: assistant instructions, raw literature notes, internal reports, PDFs (copyrighted papers, plan)
+CLAUDE.md
+research_notes/
+reports/
+docs/*.pdf
+*.pt
+*.pth
+*.ckpt
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/

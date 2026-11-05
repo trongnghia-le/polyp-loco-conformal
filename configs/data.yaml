@@ -1,0 +1,5 @@
+# Mask -> box extraction settings read by scripts/build_manifest.py
+mask_threshold: 127   # masks are JPEG: pixel > 127 is foreground
+# PROVISIONAL: smallest area (pixels) of a connected component (8-conn) kept as a polyp.
+# Chosen from the component-area histogram + agreement sweep in docs/manifest_report.md (agreement saturates at ~50 px; real small polyps seen from ~220 px); revisit if noise/true tiny polyps appear.
+min_area: 50
