@@ -19,3 +19,4 @@ api_key
 *.token
 # Manuscript drafts stay local (never pushed)
 paper/
+docs/notes/*manuscript*
