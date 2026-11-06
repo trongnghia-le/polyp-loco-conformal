@@ -142,7 +142,7 @@ build(99, folds=("C2",), epochs=1, patience=1, name="run_test", label="1-epoch p
 build(0, folds=("C1", "C4"), size="m", name="run_mpilot", label="YOLO11m pilot, seed 0 (C1, C4)")
 # Full YOLO11m set (run on a teammate's own Kaggle account; seed 0 C1/C4 come from the pilot above).
 # At most 3-4 folds per notebook so one session stays well under the platform time limit.
-TEAMMATE = "nghiale0205"  # teammate account that runs the YOLO11m set (dataset shared to it, Can view)
+TEAMMATE = KAGGLE_USER  # teammate account could not be phone-verified (no GPU/internet); YOLO11m set runs on the owner account
 build(0, folds=("C2", "C3", "C5", "C6"), size="m", name="run_m_seed0_rest", label="YOLO11m seed 0 (C2, C3, C5, C6)", owner=TEAMMATE)
 for seed in (1, 2):
     build(seed, folds=("C1", "C2", "C3"), size="m", name=f"run_m_seed{seed}_a", label=f"YOLO11m seed {seed} (C1-C3)", owner=TEAMMATE)
