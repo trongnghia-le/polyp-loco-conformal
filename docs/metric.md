@@ -54,3 +54,13 @@ Các con số kèm n trung bình, k trung bình của lần rút.
 - Ảnh âm loại khỏi rủi ro CRC (mục 3).
 - Giả định A1 (một polyp/chuỗi) và N = 5 khung có chú thích (mục 4).
 - Rút theo nguyên cụm tới khi đủ ngân sách ảnh (n thực có thể vượt ngân sách) (mục 6).
+
+---
+
+## Quyết định 2026-11-06 (sau khi xem kết quả seed 0–1, trước khi chạy conformal)
+
+**Tiêu chí "phát hiện được" chính: IoU ≥ 0,1** (khung dự đoán chạm polyp — ý nghĩa lâm sàng của cảnh báo); **IoU ≥ 0,5 là phân tích độ nhạy**. Mọi phần khác của định nghĩa (khớp một-đổi-một tham lam theo điểm, đơn vị polyp = một bbox chính thức, loss theo ảnh) giữ nguyên.
+
+**Lưới α: {0,05; 0,10; 0,15; 0,20; 0,30}.** Bài tập trung vào 0,10–0,30; α = 0,05 được báo như trường hợp giới hạn.
+
+**Lý do (ghi minh bạch, thay đổi được đưa ra sau khi đã thấy dữ liệu):** ở trung tâm bị loại, ngay cả khi giữ mọi box (conf ≥ 0,001), tỷ lệ polyp không bao giờ được khoanh trúng ("sàn bỏ sót") là 6–25 % với IoU ≥ 0,5 (C1: 25 %) và 5–10 % với IoU ≥ 0,1 (`docs/notes/2026-11-06_detection-heldout.md`). CRC chỉ chọn ngưỡng điểm nên không thể bảo đảm tỷ lệ bỏ sót dưới sàn; với IoU ≥ 0,5 bài sẽ đo khả năng định vị của YOLO thay vì độ tin cậy của bảo đảm. Quyết định chỉ dựa trên recall tối đa (không dựa trên kết quả CRC nào), được người dùng chốt ngày 2026-11-06. Bài phải nêu rõ thứ tự này và báo cả IoU ≥ 0,5.
