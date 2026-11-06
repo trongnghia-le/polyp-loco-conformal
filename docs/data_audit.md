@@ -56,3 +56,6 @@ Final frames per center (decision applied 2026-11-05: seq5 -> C2; single | posit
 Leakage risk (from the LOCO research notes, to verify when building splits): no patient IDs exist, and filename prefixes look like source-video IDs shared across folders: seq1/seq2, seq3/seq4, seq6/seq10, seq7/seq8 share a prefix, and seq3_neg comes from the same source as seq6/seq10. Any split inside a center (validation, target recalibration vs target test) must group by source prefix, not by folder.
 
 C2 and C3 have no negative sequences, so false alarms on negative frames can only be measured at C1, C4, C5, C6 (plus the few empty-mask singles).
+
+## Licence conflict (found 2026-11-07 while drafting the paper)
+The release's `readme.md` says **CC BY 4.0** ("licensing of new creations must use the exact same terms"), but its `license.txt` is **CC BY-NC-SA 4.0** (non-commercial, share-alike), and the Synapse terms forbid redistribution. Until resolved, assume the strictest (CC BY-NC-SA + no redistribution): keep the Kaggle copy private, release only filename-level splits and code, and do NOT put PolypGen frames in paper figures without checking compatibility with the journal's CC BY publication licence. Ask the dataset authors which file is authoritative before submission.

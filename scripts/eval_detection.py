@@ -91,3 +91,28 @@ for d in sorted((ROOT / "outputs" / "kaggle").glob("C*_seed*")):
         ours = res[(res.fold == fold) & (res.seed == int(seed)) & (res.role == "val")].AP50.iloc[0]
         assert abs(ours - u) < 0.06, (d.name, ours, u)
 print("val AP50 matches Ultralytics mAP50 within 0.06 for every run")
+
+# Max achievable recall ("miss floor" = 1 - value) at several IoU criteria, keeping every box (conf >= 0.001).
+# Saved to file because the paper's Table 1 cites it (it was previously only printed in a note).
+rows = []
+for d in sorted((ROOT / "outputs" / "kaggle").glob("C*_seed*")):
+    fold, seed = d.name.split("_seed")
+    pq = next(d.glob("preds_*.parquet"), None)
+    if pq is None:
+        continue
+    preds, idx = pd.read_parquet(pq), pd.read_csv(next(d.glob("index_*.csv")))
+    for role in ("val", "target"):
+        P = preds[preds.role == role]; g = {k: v for k, v in P.groupby("orig_path")}
+        for thr in (0.1, 0.3, 0.5):
+            n = hit = 0
+            for p in idx.loc[idx.role == role, "orig_path"]:
+                gt = GT[p]
+                if not len(gt):
+                    continue
+                q = g.get(p)
+                b = q[["x1", "y1", "x2", "y2"]].to_numpy(float) if q is not None else np.zeros((0, 4))
+                s = q.score.to_numpy(float) if q is not None else np.zeros(0)
+                n += len(gt); hit += match(gt, b, s, thr)[1].sum()
+            rows.append(dict(fold=fold, seed=int(seed), role=role, iou=thr, n_polyps=n, max_recall=hit / n))
+mr = pd.DataFrame(rows); mr.to_csv(out / "max_recall.csv", index=False)
+print(mr.groupby(["role", "iou", "fold"]).max_recall.mean().unstack("fold").round(3).to_string())

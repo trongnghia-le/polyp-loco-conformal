@@ -17,3 +17,5 @@ splits/target_draws_*.json
 api_key
 *access_token*
 *.token
+# Manuscript drafts stay local (never pushed)
+paper/

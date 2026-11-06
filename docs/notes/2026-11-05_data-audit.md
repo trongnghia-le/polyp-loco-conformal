@@ -6,6 +6,8 @@
 - Bảng kê `data/manifest.csv` (8.037 dòng) do `scripts/build_manifest.py` tạo; báo cáo `docs/manifest_report.md`.
 
 ## Số liệu (từ `data/manifest.csv`)
+> **Đính chính 2026-11-06:** bảng dưới là trước khi chuyển seq5 sang C2. Số đúng hiện tại: C2 = 301 / 1.115 / 0 / **1.416**, C5 = 208 / 0 / 731 / **939** (xem `docs/data_audit.md`, `docs/manifest_report.md`).
+
 | Trung tâm | Ảnh đơn | Chuỗi dương | Chuỗi âm | Tổng |
 |---|---|---|---|---|
 | C1 | 256 | 228 | 430 | 914 |

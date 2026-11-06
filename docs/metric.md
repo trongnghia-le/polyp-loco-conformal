@@ -3,10 +3,10 @@
 Mọi thay đổi sau khi đã nhìn kết quả phải ghi thành mục "Thay đổi" cuối file, kèm lý do. Cài đặt tham chiếu: `scripts/metrics.py` (numpy, có self-check). Ngưỡng nhị phân hoá mask và diện tích tối thiểu nằm ở `configs/data.yaml`, khoá `mask_threshold` và `min_area`.
 
 ## 1. Đơn vị polyp
-Một **polyp** trong một khung = một connected component (8-connectivity) của `mask > mask_threshold`, bỏ component có diện tích < `min_area` pixel. Box GT = bounding box chặt của component, `[x0, y0, x1+1, y1+1]` (nửa mở, pixel ảnh gốc). Box GT luôn sinh từ mask, kể cả 64 ảnh C3 thiếu file bbox, để cả sáu trung tâm dùng cùng một quy tắc. Ảnh có 0 component sau lọc là **ảnh âm** (gồm 5/31/1/81/2/5 ảnh mask rỗng ở C1..C6 và mọi khung `seq*_neg`). Box dự đoán được đổi về pixel ảnh gốc trước khi tính IoU.
+Một **polyp** trong một khung = một connected component (8-connectivity) của `mask > mask_threshold`, bỏ component có diện tích < `min_area` pixel. Box GT = bounding box chặt của component, `[x0, y0, x1+1, y1+1]` (nửa mở, pixel ảnh gốc). ~~Box GT luôn sinh từ mask, kể cả 64 ảnh C3 thiếu file bbox, để cả sáu trung tâm dùng cùng một quy tắc.~~ **Thay thế ngày 2026-11-06** (`docs/notes/2026-11-05_seq5-and-fragments.md`): khi có file bbox chính thức, **mỗi bbox chính thức = 1 polyp** và là box GT (thòng lọng/dụng cụ cắt ngang làm mask vỡ mảnh; các mảnh trong cùng bbox thuộc cùng polyp); mảnh mask nằm ngoài mọi bbox tính là polyp riêng và được gắn cờ (3 khung); chỉ 64 ảnh C3 thiếu file bbox mới dùng box sinh từ mask. Cột `gt_boxes` của `data/manifest.csv`. Ảnh có 0 component sau lọc là **ảnh âm** (gồm 5/31/1/81/2/5 ảnh mask rỗng ở C1..C6 và mọi khung `seq*_neg`). Box dự đoán được đổi về pixel ảnh gốc trước khi tính IoU.
 
 ## 2. Phát hiện ở cấp khung
-Với ngưỡng điểm λ, tập dự đoán là P(λ) = {box có score ≥ λ}. Một polyp g được **phát hiện** nếu được ghép với một box p ∈ P(λ) có IoU(p, g) ≥ 0.5.
+Với ngưỡng điểm λ, tập dự đoán là P(λ) = {box có score ≥ λ}. Một polyp g được **phát hiện** nếu được ghép với một box p ∈ P(λ) có IoU(p, g) ≥ 0.5 (**đã đổi ngày 2026-11-06: tiêu chí chính IoU ≥ 0,1, IoU ≥ 0,5 là phân tích độ nhạy — xem mục Quyết định ở cuối file**).
 
 **Quy tắc ghép: một-một, tham lam theo score giảm dần** (hoà thì theo thứ tự đầu vào). Duyệt p theo score giảm dần; p nhận GT chưa ghép có IoU cao nhất nếu IoU ≥ 0.5, ngược lại không ghép gì.
 - Vì sao một-một: nếu một box lớn được phép "phủ" hai polyp sát nhau thì mỗi polyp đều tính là phát hiện, làm tỷ lệ bỏ sót thấp giả. Một-một đúng với ý nghĩa lâm sàng "mỗi polyp cần một cảnh báo".
