@@ -24,7 +24,7 @@ ap.add_argument("--imgsz", type=int, default=640)
 ap.add_argument("--epochs", type=int, default=50)
 ap.add_argument("--patience", type=int, default=10)
 ap.add_argument("--batch", type=int, default=16)
-ap.add_argument("--pred-batch", type=int, default=4, help="batch for val/predict (small: the trainer keeps GPU memory)")
+ap.add_argument("--pred-batch", type=int, default=16, help="batch for val/predict (small: the trainer keeps GPU memory)")
 ap.add_argument("--skip-train", action="store_true", help="reuse runs/<tag>/weights/best.pt + results.csv from --workdir, no retraining")
 ap.add_argument("--workers", type=int, default=2)
 ap.add_argument("--seed", type=int, default=0)
@@ -91,13 +91,18 @@ for role in ["val", "cal", "target"]:
     sub = idx[idx.role == role].set_index("name")
     t0 = time.time()
     paths = [str(ds / "images" / role / n) for n in sub.index]
-    for r in model.predict(paths, conf=0.001, iou=0.6, max_det=100, imgsz=a.imgsz, batch=a.pred_batch,
-                           device=device, half=cuda, stream=True, verbose=False):
-        name = Path(r.path).name
-        # r.boxes.xyxy is in ORIGINAL image pixels (Ultralytics rescales from the letterboxed input)
-        assert tuple(r.orig_shape) == (sub.loc[name, "height"], sub.loc[name, "width"]), name
-        for (x1, y1, x2, y2), s in zip(r.boxes.xyxy.cpu().tolist(), r.boxes.conf.cpu().tolist()):
-            rows.append((sub.loc[name, "orig_path"], role, sub.loc[name, "center"], x1, y1, x2, y2, s))
+    # A LIST of paths is loaded by Ultralytics as ONE batch (LoadPilAndNumpy, bs = len(list); `batch` is ignored),
+    # which ran the whole cal set through the GPU at once -> OOM. Feed it in chunks of --pred-batch images.
+    for i in range(0, len(paths), a.pred_batch):
+        for r in model.predict(paths[i:i + a.pred_batch], conf=0.001, iou=0.6, max_det=100, imgsz=a.imgsz,
+                               device=device, half=cuda, verbose=False):
+            name = Path(r.path).name
+            # r.boxes.xyxy is in ORIGINAL image pixels (Ultralytics rescales from the letterboxed input)
+            assert tuple(r.orig_shape) == (sub.loc[name, "height"], sub.loc[name, "width"]), name
+            for (x1, y1, x2, y2), s in zip(r.boxes.xyxy.cpu().tolist(), r.boxes.conf.cpu().tolist()):
+                rows.append((sub.loc[name, "orig_path"], role, sub.loc[name, "center"], x1, y1, x2, y2, s))
+        if cuda and (i // a.pred_batch) % 100 == 0:
+            print(f"[mem] {role} {i}/{len(paths)} allocated {torch.cuda.memory_allocated() / 2**30:.2f} GiB", flush=True)
     t_pred[role] = round(time.time() - t0, 2)
     print(f"[time] predict {role}: {len(sub)} images {t_pred[role]:.1f}s", flush=True)
 df = pd.DataFrame(rows, columns=["orig_path", "role", "center", "x1", "y1", "x2", "y2", "score"])

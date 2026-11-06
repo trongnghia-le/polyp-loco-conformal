@@ -28,10 +28,10 @@ print(subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=c
 '''
 
 RUN = '''# ===== CONFIG (generated; nothing to edit) =====
-FOLDS = ["C1", "C2", "C3", "C4", "C5", "C6"]
+FOLDS = __FOLDS__
 SEEDS = [__SEED__]
 ALREADY_DONE = __DONE__          # runs to skip (empty: all 6 folds are trained)
-EPOCHS, PATIENCE, SIZE = 50, 10, "s"   # fixed for all folds/seeds
+EPOCHS, PATIENCE, SIZE = __EPOCHS__, __PATIENCE__, "s"   # fixed for all folds/seeds
 STOP_NEW_RUNS_AFTER_H = 8.0          # never start a new run after this many hours (session limit safety)
 # ===============================================================
 import json, shutil, time
@@ -69,6 +69,10 @@ for fold, seed in runs:
         fails = 0
     else:
         fails += 1
+        for f in W.glob(f"best_{tag}.pt"):                      # keep what training produced
+            shutil.move(str(f), d / f.name)
+        if (W / "runs" / tag / "results.csv").exists():
+            shutil.copy(W / "runs" / tag / "results.csv", d / "results.csv")
         print(f"!!! {tag} FAILED (rc={rc}); log: {d/'log.txt'}", flush=True)
     shutil.rmtree(W / "runs" / tag, ignore_errors=True)      # keep /kaggle/working small
     shutil.rmtree(W / f"yolo_{fold}", ignore_errors=True)
@@ -90,9 +94,11 @@ shutil.make_archive(str(W / name), "zip", RES)
 print("download:", W / f"{name}.zip")
 '''
 
-def build(seed):
-    run = RUN.replace("__SEED__", str(seed)).replace("__DONE__", "set()")
-    title = (f"# LOCO YOLO11 training, seed {seed} (all folds)\n"
+def build(seed, folds=("C1", "C2", "C3", "C4", "C5", "C6"), epochs=50, patience=10, name=None, label=None):
+    name = name or f"run_seed{seed}"
+    run = (RUN.replace("__SEED__", str(seed)).replace("__DONE__", "set()").replace("__FOLDS__", repr(list(folds)))
+           .replace("__EPOCHS__", str(epochs)).replace("__PATIENCE__", str(patience)))
+    title = (f"# LOCO YOLO11 training: {label or f'seed {seed} (all folds)'}\n"
              "Settings: Accelerator = GPU, Internet = On. Then **Save Version > Save & Run All (Commit)**; runs in the "
              f"background. Download `results_seeds_{seed}.zip` from the Output tab into `outputs/kaggle/`.")
     nb = {
@@ -111,14 +117,14 @@ def build(seed):
         if c["cell_type"] == "code":
             t = "".join(c["source"])
             ast.parse(t.split("\n", 1)[1] if t.startswith("%%writefile") else t)
-    out = ROOT / "kaggle" / f"run_seed{seed}.ipynb"
+    out = ROOT / "kaggle" / f"{name}.ipynb"
     out.write_text(json.dumps(nb, indent=1), encoding="utf-8")
     print(out, f"{out.stat().st_size / 1e3:.0f} KB")
     # ready-to-push folder for the Kaggle CLI (kernels push -p <dir>); outputs/ is git-ignored
-    kd = ROOT / "outputs" / "kaggle_kernels" / f"seed{seed}"
+    kd = ROOT / "outputs" / "kaggle_kernels" / name.replace("run_", "")
     kd.mkdir(parents=True, exist_ok=True)
     (kd / out.name).write_text(out.read_text(encoding="utf-8"), encoding="utf-8")
-    meta = {"id": f"{KAGGLE_USER}/polypgen-loco-seed{seed}", "title": f"polypgen loco seed{seed}",
+    meta = {"id": f"{KAGGLE_USER}/polypgen-loco-{name.replace('run_', '')}", "title": f"polypgen loco {name.replace('run_', '')}",
             "code_file": out.name, "language": "python", "kernel_type": "notebook", "is_private": "true",
             "enable_gpu": "true", "enable_tpu": "false", "enable_internet": "true",
             "dataset_sources": [f"{KAGGLE_USER}/polypgen-loco"], "competition_sources": [],
@@ -128,3 +134,5 @@ def build(seed):
 
 for seed in (0, 1, 2):
     build(seed)
+# 1-epoch test on the fold with the biggest cal set (C2): exercises the full-size prediction path in ~6 min
+build(99, folds=("C2",), epochs=1, patience=1, name="run_test", label="1-epoch pipeline test (C2)")
