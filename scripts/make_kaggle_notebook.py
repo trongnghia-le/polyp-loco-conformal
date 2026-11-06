@@ -89,7 +89,7 @@ for m in sorted(RES.glob("*/run_meta_*.json")):
                      train_min=round(j["seconds"]["train_total"] / 60, 1), val_mAP50=round(j["val"]["mAP50"], 4),
                      val_mAP50_95=round(j["val"]["mAP50_95"], 4), gpu=j["gpu"], boxes=sum(j["n_pred_boxes"].values())))
 summ = pd.DataFrame(rows); summ.to_csv(RES / "summary.csv", index=False); print(summ.to_string(index=False))
-name = "results_seeds_" + "_".join(map(str, SEEDS))
+name = f"results_{SIZE}_seed{'_'.join(map(str, SEEDS))}_{'-'.join(FOLDS)}"
 shutil.make_archive(str(W / name), "zip", RES)
 print("download:", W / f"{name}.zip")
 '''
@@ -100,7 +100,7 @@ def build(seed, folds=("C1", "C2", "C3", "C4", "C5", "C6"), epochs=50, patience=
            .replace("__EPOCHS__", str(epochs)).replace("__PATIENCE__", str(patience)).replace("__SIZE__", size))
     title = (f"# LOCO YOLO11 training: {label or f'seed {seed} (all folds)'}\n"
              "Settings: Accelerator = GPU, Internet = On. Then **Save Version > Save & Run All (Commit)**; runs in the "
-             f"background. Download `results_seeds_{seed}.zip` from the Output tab into `outputs/kaggle/`.")
+             "background. Download the `results_*.zip` from the Output tab.")
     nb = {
         "cells": [
             md(title),
@@ -138,3 +138,9 @@ for seed in (0, 1, 2):
 build(99, folds=("C2",), epochs=1, patience=1, name="run_test", label="1-epoch pipeline test (C2)")
 # YOLO11m pilot on the two hardest held-out centres: does a bigger detector lower the miss floor?
 build(0, folds=("C1", "C4"), size="m", name="run_mpilot", label="YOLO11m pilot, seed 0 (C1, C4)")
+# Full YOLO11m set (run on a teammate's own Kaggle account; seed 0 C1/C4 come from the pilot above).
+# At most 3-4 folds per notebook so one session stays well under the platform time limit.
+build(0, folds=("C2", "C3", "C5", "C6"), size="m", name="run_m_seed0_rest", label="YOLO11m seed 0 (C2, C3, C5, C6)")
+for seed in (1, 2):
+    build(seed, folds=("C1", "C2", "C3"), size="m", name=f"run_m_seed{seed}_a", label=f"YOLO11m seed {seed} (C1-C3)")
+    build(seed, folds=("C4", "C5", "C6"), size="m", name=f"run_m_seed{seed}_b", label=f"YOLO11m seed {seed} (C4-C6)")
