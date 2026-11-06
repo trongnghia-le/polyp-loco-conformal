@@ -94,7 +94,8 @@ shutil.make_archive(str(W / name), "zip", RES)
 print("download:", W / f"{name}.zip")
 '''
 
-def build(seed, folds=("C1", "C2", "C3", "C4", "C5", "C6"), epochs=50, patience=10, name=None, label=None, size="s"):
+def build(seed, folds=("C1", "C2", "C3", "C4", "C5", "C6"), epochs=50, patience=10, name=None, label=None, size="s",
+          owner=KAGGLE_USER):
     name = name or f"run_seed{seed}"
     run = (RUN.replace("__SEED__", str(seed)).replace("__DONE__", "set()").replace("__FOLDS__", repr(list(folds)))
            .replace("__EPOCHS__", str(epochs)).replace("__PATIENCE__", str(patience)).replace("__SIZE__", size))
@@ -121,10 +122,11 @@ def build(seed, folds=("C1", "C2", "C3", "C4", "C5", "C6"), epochs=50, patience=
     out.write_text(json.dumps(nb, indent=1), encoding="utf-8")
     print(out, f"{out.stat().st_size / 1e3:.0f} KB")
     # ready-to-push folder for the Kaggle CLI (kernels push -p <dir>); outputs/ is git-ignored
-    kd = ROOT / "outputs" / "kaggle_kernels" / name.replace("run_", "")
+    slug = name.replace("run_", "").replace("_", "-")   # Kaggle slugs use hyphens
+    kd = ROOT / "outputs" / "kaggle_kernels" / slug
     kd.mkdir(parents=True, exist_ok=True)
     (kd / out.name).write_text(out.read_text(encoding="utf-8"), encoding="utf-8")
-    meta = {"id": f"{KAGGLE_USER}/polypgen-loco-{name.replace('run_', '')}", "title": f"polypgen loco {name.replace('run_', '')}",
+    meta = {"id": f"{owner}/polypgen-loco-{slug}", "title": f"polypgen loco {slug}",
             "code_file": out.name, "language": "python", "kernel_type": "notebook", "is_private": "true",
             "enable_gpu": "true", "enable_tpu": "false", "enable_internet": "true",
             "dataset_sources": [f"{KAGGLE_USER}/polypgen-loco"], "competition_sources": [],
@@ -140,7 +142,8 @@ build(99, folds=("C2",), epochs=1, patience=1, name="run_test", label="1-epoch p
 build(0, folds=("C1", "C4"), size="m", name="run_mpilot", label="YOLO11m pilot, seed 0 (C1, C4)")
 # Full YOLO11m set (run on a teammate's own Kaggle account; seed 0 C1/C4 come from the pilot above).
 # At most 3-4 folds per notebook so one session stays well under the platform time limit.
-build(0, folds=("C2", "C3", "C5", "C6"), size="m", name="run_m_seed0_rest", label="YOLO11m seed 0 (C2, C3, C5, C6)")
+TEAMMATE = "nghiale0205"  # teammate account that runs the YOLO11m set (dataset shared to it, Can view)
+build(0, folds=("C2", "C3", "C5", "C6"), size="m", name="run_m_seed0_rest", label="YOLO11m seed 0 (C2, C3, C5, C6)", owner=TEAMMATE)
 for seed in (1, 2):
-    build(seed, folds=("C1", "C2", "C3"), size="m", name=f"run_m_seed{seed}_a", label=f"YOLO11m seed {seed} (C1-C3)")
-    build(seed, folds=("C4", "C5", "C6"), size="m", name=f"run_m_seed{seed}_b", label=f"YOLO11m seed {seed} (C4-C6)")
+    build(seed, folds=("C1", "C2", "C3"), size="m", name=f"run_m_seed{seed}_a", label=f"YOLO11m seed {seed} (C1-C3)", owner=TEAMMATE)
+    build(seed, folds=("C4", "C5", "C6"), size="m", name=f"run_m_seed{seed}_b", label=f"YOLO11m seed {seed} (C4-C6)", owner=TEAMMATE)

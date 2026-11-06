@@ -14,3 +14,6 @@ __pycache__/
 .venv/
 .ipynb_checkpoints/
 splits/target_draws_*.json
+api_key
+*access_token*
+*.token
