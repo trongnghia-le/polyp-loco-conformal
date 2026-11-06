@@ -31,7 +31,7 @@ RUN = '''# ===== CONFIG (generated; nothing to edit) =====
 FOLDS = __FOLDS__
 SEEDS = [__SEED__]
 ALREADY_DONE = __DONE__          # runs to skip (empty: all 6 folds are trained)
-EPOCHS, PATIENCE, SIZE = __EPOCHS__, __PATIENCE__, "s"   # fixed for all folds/seeds
+EPOCHS, PATIENCE, SIZE = __EPOCHS__, __PATIENCE__, "__SIZE__"   # fixed for all folds/seeds
 STOP_NEW_RUNS_AFTER_H = 8.0          # never start a new run after this many hours (session limit safety)
 # ===============================================================
 import json, shutil, time
@@ -94,10 +94,10 @@ shutil.make_archive(str(W / name), "zip", RES)
 print("download:", W / f"{name}.zip")
 '''
 
-def build(seed, folds=("C1", "C2", "C3", "C4", "C5", "C6"), epochs=50, patience=10, name=None, label=None):
+def build(seed, folds=("C1", "C2", "C3", "C4", "C5", "C6"), epochs=50, patience=10, name=None, label=None, size="s"):
     name = name or f"run_seed{seed}"
     run = (RUN.replace("__SEED__", str(seed)).replace("__DONE__", "set()").replace("__FOLDS__", repr(list(folds)))
-           .replace("__EPOCHS__", str(epochs)).replace("__PATIENCE__", str(patience)))
+           .replace("__EPOCHS__", str(epochs)).replace("__PATIENCE__", str(patience)).replace("__SIZE__", size))
     title = (f"# LOCO YOLO11 training: {label or f'seed {seed} (all folds)'}\n"
              "Settings: Accelerator = GPU, Internet = On. Then **Save Version > Save & Run All (Commit)**; runs in the "
              f"background. Download `results_seeds_{seed}.zip` from the Output tab into `outputs/kaggle/`.")
@@ -136,3 +136,5 @@ for seed in (0, 1, 2):
     build(seed)
 # 1-epoch test on the fold with the biggest cal set (C2): exercises the full-size prediction path in ~6 min
 build(99, folds=("C2",), epochs=1, patience=1, name="run_test", label="1-epoch pipeline test (C2)")
+# YOLO11m pilot on the two hardest held-out centres: does a bigger detector lower the miss floor?
+build(0, folds=("C1", "C4"), size="m", name="run_mpilot", label="YOLO11m pilot, seed 0 (C1, C4)")
