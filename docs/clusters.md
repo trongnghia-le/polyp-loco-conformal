@@ -1,6 +1,6 @@
 # Source-video clusters (`data/clusters.csv`)
 
-PolypGen has no patient IDs. `cluster_id` is the best estimate of the source video (or patient, for C1 singles) so that frames of one video never straddle a split. Built by `scripts/build_clusters.py` (~3 min; ends with an assert block: 8037 unique rows, no cluster spans two centers).
+PolypGen has no patient IDs. `cluster_id` is the best estimate of the source video (or patient, for C1 singles) so that frames of one video never straddle a split. Built by `scripts/build_clusters.py` (~3 min; ends with an assert block: 8037 unique rows, no cluster spans two centers, no cross-center near-duplicates).
 Columns: `path` (relative to `PolypGen2021_MultiCenterData_v3/`), `center` (from `docs/data_audit.md`), `cluster_id`, `evidence`.
 Note: `data/raw/*.zip` was no longer present when this was built (only the extracted folder); the script reads the zip if it exists, else the extracted folder, read-only. Both give the same 8037 paths.
 
@@ -38,18 +38,18 @@ Extra findings:
 - **C1, C3, C5: none** (C1 singles vs seq11 / neg 4-7: best 0.81; C5 singles vs C5 sequences < 0.76; C3 has no sequences).
 - **C2: yes.** Singles are frames of the sequences' videos: 001318 and 001320 = seq12 frames (e.g. seq12_968, MAD 1.0; merged into `C2_seq12`), 001346 = seq15 (seq15 contains a frozen stretch: 34 frames identical to it; merged into `C2_seq15`). Borderline, not merged (corr >= 0.99 but MAD 3-6): 001334 ~ seq13_44, 001344 ~ seq14_584, 001140 ~ seq15 frames. So many more C2 singles are probably from seq12-15 videos without being pixel-identical.
 - **C6: yes.** 0100111 and 0100112 = seq6_C6 (`C6_seq21`) frames 384/252; 0100091 = seq7_C6 (`C6_seq22`) frames 840-930; 3 more borderline pairs with seq16/seq17.
-- **Cross-center duplicates (not merged, flagged `xcenter_dup`):** C2 singles 001351/001352/001353 are pixel duplicates of seq5 frames 12/92/200 (MAD 1.2/2.9/2.9), but seq5 is mapped to C5 in `data_audit.md`. seq5 frames also carry the same left text overlay and the 1064x1440 resolution of C2 singles, while C5 singles are 1080x1920 / 288x384 with a teal ScopeGuide panel (and no C5 single resembles seq5). seq12/13/14/15 also have C2-only resolutions (1024x1280, 1064x1440, 1072x1704). Either seq5 belongs to C2 (then C2 totals disagree with the paper) or C2 singles contain seq5 frames; this contradicts the seq5 -> C5 mapping and should be resolved before trusting C5 as a held-out center (the 250 sequence frames of C5 may actually be C2 video).
+- **seq5 (decided 2026-11-05: C2, not C5).** C2 singles 001351/001352/001353 are pixel near-duplicates of seq5 frames 12/92/200 (MAD 1.2/2.9/2.9) and seq5 is mapped to C2 (`docs/notes/2026-11-05_seq5-and-fragments.md`), so they now merge into `C2_seq5` by the ordinary same-center near-duplicate rule. The former `xcenter_dup` special case is gone; the script asserts that no cross-center near-duplicate pair remains.
 
 ## Counts
-Clusters per center (images): C1 166 (914), C2 299 (1166), C3 457 (457), C4 40 (2036), C5 210 (1189), C6 103 (2275); total 1275.
-Singletons: C1 111, C2 292, C3 457, C4 1, C5 204, C6 85 = 1150 (1150 of 8037 images, 14%).
-Size distribution (clusters): 1 image: 1150; 2-5: 65; 6-20: 20; 21-50: 2; 51-100: 14; 101-300: 19; >300: 5 (largest `C4_vn40` 448, C4 n49 315, n45 311, n48 302, `C6_seq14_neg` 301). Median multi-frame cluster: C4 8, C6 101, C5 220.
-Evidence column: `folder` 4220 images, `name_prefix` 1732, `singleton` 1147, `folder+near_dup` 468, `name_prefix+sim_link` 448, `near_dup` 16 (singles joined to singles/sequences), `singleton+xcenter_dup` 3, `folder+xcenter_dup` 3.
+Clusters per center (images): C1 166 (914), C2 297 (1416), C3 457 (457), C4 40 (2036), C5 209 (939), C6 103 (2275); total 1272.
+Singletons: C1 111, C2 289, C3 457, C4 1, C5 204, C6 85 = 1147 (1147 of 8037 images, 14%).
+Size distribution (clusters): 1 image: 1147; 2-5: 65; 6-20: 20; 21-50: 2; 51-100: 14; 101-300: 19; >300: 5 (largest `C4_vn40` 448, C4 n49 315, n45 311, n48 302, `C6_seq14_neg` 301). Median multi-frame cluster: C1 2, C2 183, C4 8, C5 190, C6 101.5.
+Evidence column: `folder` 3973 images, `name_prefix` 1732, `singleton` 1147, `folder+near_dup` 718, `name_prefix+sim_link` 448, `near_dup` 19 (singles joined to singles/sequences).
 
 ## Remaining uncertainty
 1. **Singles with no name key (all of C3; most of C2, C5, C6 singles; C1 without prefix)** are singleton clusters. Only 15 C3 images have any other C3 image at corr >= 0.95, but frames of one video that are not near-identical cannot be linked, so splitting C3 (and C2/C5/C6 singles) still leaks videos/patients to an unknown extent. 1150 "singletons" is an upper bound on independent sources, not an estimate. Safest for calibration/test splits in these centers: split by center, or accept optimistic estimates.
 2. C1 prefix is probably patient-level (several polyps per prefix); C1 seq11 and neg 4-7 may belong to the same patients as singles (no pixel evidence either way).
 3. C4 single prefixes are video ids (zero cross-video pairs at 0.99) but two videos may share a patient. n40 merge is a similarity judgement.
 4. C6 negative folders, C1 neg4/neg7, C6 seq19_neg/seq21_neg possibly shared sources (see above); sequence folders are assumed to be one video each (consecutive frame numbers), except C6 seq14_neg (frames 1-1050 with one 750-frame gap, so two clips) and C6 seq15_neg (one 92-frame gap).
-5. The seq5 / C5 / C2 conflict above.
+5. (resolved) seq5 is a C2 video; its 250 frames and the 3 matching C2 singles form `C2_seq5`. C5 now has no positive sequence frames (208 singles + 731 negative sequence frames).
 6. Thresholds were calibrated on C4 only (low-res correlation); other centers have different frame statistics.

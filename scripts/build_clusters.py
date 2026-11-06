@@ -18,8 +18,9 @@ R_CORR, R_MAD, WEAK_CORR = 0.99, 3.0, 0.97
 WEAK_LINKS = [("C4_vn40", "C4_vp2")]  # seq10_neg <-> seq6/seq10/seq3_neg
 
 # sequence folder number -> center (docs/data_audit.md)
-POS = {**{k: "C4" for k in (1, 2, 3, 4, 6, 7, 8, 9, 10)}, 5: "C5", 11: "C1",
-       **{k: "C2" for k in (12, 13, 14, 15)}, **{k: "C6" for k in range(16, 24)}}
+# seq5 is C2 (not C5 as in the paper): decided 2026-11-05, docs/notes/2026-11-05_seq5-and-fragments.md
+POS = {**{k: "C4" for k in (1, 2, 3, 4, 6, 7, 8, 9, 10)}, 11: "C1",
+       **{k: "C2" for k in (5, 12, 13, 14, 15)}, **{k: "C6" for k in range(16, 24)}}
 NEG = {**{k: "C4" for k in (1, 2, 3, 8, 9, 10)}, **{k: "C1" for k in (4, 5, 6, 7)},
        **{k: "C5" for k in (11, 12, 13)}, **{k: "C6" for k in range(14, 24)}}
 C4_NAME = re.compile(r"(\d+)_endocv2021_(positive|negative)_")
@@ -76,11 +77,11 @@ def main():
     merged_by = collections.defaultdict(set)  # key -> {'near_dup','sim_link'}
 
     C = F @ F.T; np.fill_diagonal(C, -1)
-    xc = []  # near-dups across centers (reported, never merged)
+    xc = []  # near-dups across centers: must stay empty now that seq5 is C2 (asserted below)
     for i, j in zip(*np.where(np.triu(C >= R_CORR, 1))):
         if key[i] == key[j]: continue
         if np.abs(G[i, :, 38:].astype(float) - G[j, :, 38:]).mean() > R_MAD: continue  # skip left UI panel
-        if center[i] != center[j]: xc.append((i, j)); continue
+        if center[i] != center[j]: xc.append((paths[i], paths[j])); continue
         parent[find(key[i])] = find(key[j])
         merged_by[key[i]].add("near_dup"); merged_by[key[j]].add("near_dup")
     # weak evidence: pairs of different named groups (same center) with corr >= 0.97
@@ -96,7 +97,7 @@ def main():
     print(f"weak pairs NOT merged (>=30 pairs at corr>={WEAK_CORR}):")
     for k, v in cnt.most_common():
         if v >= 30 and k not in wl: print("  ", k, v)
-    print("cross-center near-dup pairs:", len(xc), [(paths[i], paths[j]) for i, j in xc][:12])
+    assert not xc, f"cross-center near-duplicates: {xc[:6]}"
 
     # cluster id = name of the largest base group in each merged set
     size = collections.Counter(key)
@@ -106,12 +107,10 @@ def main():
         if r not in best or (size[k], k) > (size[best[r]], best[r]): best[r] = k
     cid = np.array([best[find(k)] for k in key])
     csize = collections.Counter(cid)
-    xc_idx = {i for pair in xc for i in pair}
     evidence = []
     for i in range(len(paths)):
         e = ["singleton"] if csize[cid[i]] == 1 else [ck[i][2] if ck[i][2] != "singleton" else "near_dup"]
         e += sorted(x for x in merged_by.get(key[i], []) if x not in e)
-        if i in xc_idx: e.append("xcenter_dup")
         evidence.append("+".join(e))
     df = pd.DataFrame({"path": paths, "center": center, "cluster_id": cid, "evidence": evidence})
     df.to_csv(OUT, index=False)

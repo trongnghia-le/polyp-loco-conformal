@@ -18,7 +18,7 @@ fig, ax = plt.subplots(figsize=(89 / 25.4, 50 / 25.4))
 left = 0
 for src, color in zip(order, ["#2a78d6", "#eb6834", "#1baf7a"]):
     ax.barh(t.index, t[src], left=left, color=color, height=0.62, label=labels[src],
-            edgecolor="white", linewidth=0.8)  # white gap between stacked segments
+            edgecolor="white", linewidth=1.0)  # white gap between stacked segments
     left = left + t[src]
 for y, total in zip(t.index, t.sum(axis=1)):
     ax.text(total + 30, y, f"{total:,}", va="center", ha="left", fontsize=6.5, color="#52514e")
@@ -30,6 +30,6 @@ ax.legend(loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=3, handlelength=1
 
 out = ROOT / "results" / "figures"
 out.mkdir(parents=True, exist_ok=True)
-for ext in ("pdf", "png"):
+for ext in ("pdf", "eps", "png"):
     fig.savefig(out / f"fig_dataset_composition.{ext}")
 print(t.assign(total=t.sum(axis=1)))

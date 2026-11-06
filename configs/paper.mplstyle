@@ -10,14 +10,17 @@ xtick.labelsize: 6.5
 ytick.labelsize: 6.5
 legend.fontsize: 6.5
 legend.frameon: False
-axes.linewidth: 0.6
+# Sci Rep: "thinnest lines in the final figure should be no smaller than one point wide"
+axes.linewidth: 1.0
+patch.linewidth: 1.0
+grid.linewidth: 1.0
 axes.edgecolor: 52514e
 axes.labelcolor: 0b0b0b
 text.color: 0b0b0b
 xtick.color: 52514e
 ytick.color: 52514e
-xtick.major.width: 0.6
-ytick.major.width: 0.6
+xtick.major.width: 1.0
+ytick.major.width: 1.0
 axes.spines.top: False
 axes.spines.right: False
 axes.grid: False

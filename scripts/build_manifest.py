@@ -10,13 +10,14 @@ CFG = yaml.safe_load(open(os.path.join(ROOT, "configs", "data.yaml")))
 THR, MIN_AREA = CFG["mask_threshold"], CFG["min_area"]
 
 # Sequence -> center, from docs/data_audit.md ("Sequence -> center" tables). Not stated in filenames.
-POS_CENTER = {**dict.fromkeys([1, 2, 3, 4, 6, 7, 8, 9, 10], "C4"), 5: "C5", 11: "C1",
-              **dict.fromkeys([12, 13, 14, 15], "C2"), **dict.fromkeys(range(16, 24), "C6")}
+# seq5 is C2, not C5 as the paper says: decided 2026-11-05, evidence in docs/notes/2026-11-05_seq5-and-fragments.md
+POS_CENTER = {**dict.fromkeys([1, 2, 3, 4, 6, 7, 8, 9, 10], "C4"), 11: "C1",
+              **dict.fromkeys([5, 12, 13, 14, 15], "C2"), **dict.fromkeys(range(16, 24), "C6")}
 NEG_CENTER = {**dict.fromkeys([1, 2, 3, 8, 9, 10], "C4"), **dict.fromkeys([4, 5, 6, 7], "C1"),
               **dict.fromkeys([11, 12, 13], "C5"), **dict.fromkeys(range(14, 24), "C6")}
 # data_audit.md "Final frames per center" table: (single, seq_pos, seq_neg)
-EXPECTED = {"C1": (256, 228, 430), "C2": (301, 865, 0), "C3": (457, 0, 0),
-            "C4": (227, 450, 1359), "C5": (208, 250, 731), "C6": (88, 432, 1755)}
+EXPECTED = {"C1": (256, 228, 430), "C2": (301, 1115, 0), "C3": (457, 0, 0),
+            "C4": (227, 450, 1359), "C5": (208, 0, 731), "C6": (88, 432, 1755)}
 EXPECTED_TOTAL = 8037
 
 
@@ -71,6 +72,19 @@ def match(boxes, off):
     return n, tot / max(len(boxes), len(off), 1)
 
 
+def gt_rule(boxes, cents, off):
+    """Polyps for detection. Official boxes if a bbox file exists (1 official box = 1 polyp; mask fragments inside
+    it belong to it); else mask component boxes. Components with centroid outside every official box are appended
+    (conservative: separate polyps) and flagged. -> (gt_boxes, flag)"""
+    if off is None: return [list(b) for b in boxes], ""
+    gt, flag = [list(o) for o in off], ""
+    out = [b for b, c in zip(boxes, cents)
+           if not any(o[0] <= c[0] <= o[2] and o[1] <= c[1] <= o[3] for o in off)]
+    if out: gt += out; flag = "outside_box_component"
+    if not off and boxes: flag = "outside_box_component"  # official file lists 0 boxes but mask has components
+    return gt, flag
+
+
 def main():
     rows, areas, notes = [], [], collections.defaultdict(list)
     for it in collect():
@@ -78,26 +92,29 @@ def main():
         with Image.open(it["img"]) as im: w, h = im.size
         mp = find(it["mdir"], stem, ".jpg")
         bp = find(it["bdir"], stem, ".txt")
-        boxes = []
+        boxes, cents = [], []
         if it["source"] != "seq_neg":
             if mp is None: notes["no_mask"].append(rel(it["img"]))
             else:
                 m = cv2.imread(mp, cv2.IMREAD_GRAYSCALE)
                 if m.shape != (h, w): notes["mask_size_mismatch"].append(rel(mp))
-                n, _, st, _ = cv2.connectedComponentsWithStats((m > THR).astype(np.uint8), connectivity=8)
+                n, _, st, cen = cv2.connectedComponentsWithStats((m > THR).astype(np.uint8), connectivity=8)
                 for i in range(1, n):
                     a = int(st[i, 4]); areas.append((a, rel(mp)))
                     if a >= MIN_AREA:
-                        x, y, bw, bh = (int(v) for v in st[i, :4]); boxes.append([x, y, x+bw, y+bh])
+                        x, y, bw, bh = (int(v) for v in st[i, :4]); boxes.append([x, y, x+bw, y+bh]); cents.append(cen[i])
                 if (m > THR).any() and not boxes: notes["all_components_dropped"].append(rel(mp))
         off = None
         if bp is not None:
             off = [[int(float(v)) for v in l.split()[1:5]] for l in open(bp).read().splitlines() if l.strip()]
         elif it["source"] != "seq_neg": notes["no_bbox_file"].append(rel(it["img"]))
+        gt, flag = gt_rule(boxes, cents, off)
+        if flag: notes[flag].append(rel(it["img"]))
         rows.append(dict(path=rel(it["img"]), mask_path=rel(mp) if mp else "", center=it["center"],
                          source=it["source"], seq=it["seq"], width=w, height=h, n_polyps=len(boxes),
                          boxes=json.dumps(boxes), official_boxes=json.dumps(off) if off is not None else "null",
-                         has_polyp=len(boxes) > 0))
+                         has_polyp_mask=len(boxes) > 0, gt_boxes=json.dumps(gt), n_gt=len(gt), flag=flag))
+    for r in rows: r["has_polyp"] = r["n_gt"] > 0
     df = pd.DataFrame(rows)
     df.to_csv(os.path.join(ROOT, "data", "manifest.csv"), index=False)
     report(df, areas, notes)
@@ -142,7 +159,18 @@ def report(df, areas, notes):
           "Agreement saturates at ~50 and real small polyps exist from ~220 px (e.g. `EndoCV2021_C5_50000140`), so 50 is chosen (provisional).", ""]
     L += ["## Polyp counts", "",
           f"Images with n_polyps > 1: {int((df.n_polyps > 1).sum())}; n_polyps histogram: {df.n_polyps.value_counts().sort_index().to_dict()}", "",
-          f"Images with has_polyp: {int(df.has_polyp.sum())}; single frames with no polyp, per center: {df[(df.source == 'single') & ~df.has_polyp].center.value_counts().sort_index().to_dict()}", ""]
+          f"Images with has_polyp: {int(df.has_polyp_mask.sum())} (mask) / {int(df.has_polyp.sum())} (gt_boxes); single frames with no polyp (mask), per center: {df[(df.source == 'single') & ~df.has_polyp_mask].center.value_counts().sort_index().to_dict()}", ""]
+    ng = df.n_gt.sum(); nm = df.n_polyps.sum()
+    byc = df.groupby("center").agg(mask=("n_polyps", "sum"), gt=("n_gt", "sum"), pos_mask=("has_polyp_mask", "sum"), pos_gt=("has_polyp", "sum"))
+    L += ["## Polyp counting rule (`gt_boxes`, `n_gt`, `has_polyp`, `flag`)", "",
+          "`gt_boxes` = official boxes when a bbox file exists (one official box = one polyp; mask fragments inside a box belong to it, snares split masks); mask component boxes when there is no bbox file (64 C3 images); [] for negative sequence frames. "
+          "A mask component (>= MIN_AREA) whose centroid lies outside every official box is appended as a separate polyp and the frame gets `flag=outside_box_component` (also set if the official file has 0 boxes but the mask has components). "
+          "`boxes`, `n_polyps`, `official_boxes`, `has_polyp_mask` stay mask-derived (segmentation).", "",
+          f"Total polyps: mask components {int(nm)} -> gt_boxes {int(ng)}. Positive frames: mask {int(df.has_polyp_mask.sum())} -> gt {int(df.has_polyp.sum())}. n_gt histogram: {df.n_gt.value_counts().sort_index().to_dict()}", "",
+          "| center | polyps mask | polyps gt | positive frames mask | positive frames gt |", "|---|---|---|---|---|"]
+    for c, r in byc.iterrows(): L.append(f"| {c} | {r['mask']} | {r['gt']} | {r.pos_mask} | {r.pos_gt} |")
+    fl = df[df.flag != ""]
+    L += ["", f"Flagged frames ({len(fl)}): " + (", ".join(f"`{r.path}` ({r.flag}, n_polyps {r.n_polyps}, official {len(json.loads(r.official_boxes))}, n_gt {r.n_gt})" for r in fl.itertuples()) or "none"), ""]
     sub = df[df.official_boxes != "null"]
     res = []
     for r in sub.itertuples():
@@ -159,7 +187,7 @@ def report(df, areas, notes):
     L += ["", "## Known issues (data_audit.md)", ""]
     nb = notes["no_bbox_file"]
     c3 = [p for p in nb if p.startswith("data_C3/")]
-    L.append(f"- Single/positive-sequence images with no bbox file: {len(nb)} total; in C3: {len(c3)} (of which non-empty mask: {int(df[df.path.isin(c3)].has_polyp.sum())}).")
+    L.append(f"- Single/positive-sequence images with no bbox file: {len(nb)} total; in C3: {len(c3)} (of which non-empty mask: {int(df[df.path.isin(c3)].has_polyp_mask.sum())}).")
     L.append("  C3 files: " + ", ".join(f"`{os.path.basename(p)}`" for p in c3))
     L.append(f"  Missing bbox files outside C3: {[p for p in nb if p not in c3] or 'none'}")
     L.append(f"- Images without a mask: {notes['no_mask'] or 'none'}")
@@ -174,9 +202,9 @@ def report(df, areas, notes):
     csv = pd.read_csv(os.path.join(RAW, "dataDetails_PolypGen_SingleFrames", "dataDetails_C2.csv"))
     csv["stem"] = csv.fileList.str.replace("\\", "/").str.rsplit("/", n=1).str[-1].str.rsplit(".", n=1).str[0]
     z = set(csv[csv.annotations == 0].stem)
-    d2 = df[(df.center == "C2") & (df.source == "single") & (df.has_polyp | df.mask_path.isin(notes["all_components_dropped"]))]
+    d2 = df[(df.center == "C2") & (df.source == "single") & (df.has_polyp_mask | df.mask_path.isin(notes["all_components_dropped"]))]
     d2 = d2[d2.path.map(lambda p: os.path.splitext(os.path.basename(p))[0]).isin(z)]
-    L.append(f"- C2 images with CSV annotations = 0 but mask pixels > {THR}: {[(p, m) for p, m in zip(d2.path, d2.mask_path)] or 'none'} (at MIN_AREA={MIN_AREA} it is dropped as a speck, has_polyp=False)")
+    L.append(f"- C2 images with CSV annotations = 0 but mask pixels > {THR}: {[(p, m) for p, m in zip(d2.path, d2.mask_path)] or 'none'} (at MIN_AREA={MIN_AREA} it is dropped as a speck, has_polyp_mask=False)")
     L.append("")
     open(os.path.join(ROOT, "docs", "manifest_report.md"), "w", encoding="utf-8").write("\n".join(L))
 

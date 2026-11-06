@@ -9,10 +9,10 @@ Rows: 8037 (expected 8037).
 | center | single | seq_pos | seq_neg | total | data_audit.md (single + pos / neg) |
 |---|---|---|---|---|---|
 | C1 | 256 | 228 | 430 | 914 | 256 + 228 / 430 OK |
-| C2 | 301 | 865 | 0 | 1166 | 301 + 865 / 0 OK |
+| C2 | 301 | 1115 | 0 | 1416 | 301 + 1115 / 0 OK |
 | C3 | 457 | 0 | 0 | 457 | 457 + 0 / 0 OK |
 | C4 | 227 | 450 | 1359 | 2036 | 227 + 450 / 1359 OK |
-| C5 | 208 | 250 | 731 | 1189 | 208 + 250 / 731 OK |
+| C5 | 208 | 0 | 731 | 939 | 208 + 0 / 731 OK |
 | C6 | 88 | 432 | 1755 | 2275 | 88 + 432 / 1755 OK |
 | all | 1537 | 2225 | 4275 | 8037 | |
 
@@ -42,7 +42,24 @@ MIN_AREA evidence (measured once at threshold 127 with MIN_AREA=1; static text):
 
 Images with n_polyps > 1: 305; n_polyps histogram: {0: 4916, 1: 2816, 2: 237, 3: 45, 4: 13, 5: 2, 6: 3, 8: 2, 9: 1, 11: 1, 15: 1}
 
-Images with has_polyp: 3121; single frames with no polyp, per center: {'C1': 5, 'C2': 32, 'C3': 1, 'C4': 81, 'C5': 2, 'C6': 5}
+Images with has_polyp: 3121 (mask) / 3121 (gt_boxes); single frames with no polyp (mask), per center: {'C1': 5, 'C2': 32, 'C3': 1, 'C4': 81, 'C5': 2, 'C6': 5}
+
+## Polyp counting rule (`gt_boxes`, `n_gt`, `has_polyp`, `flag`)
+
+`gt_boxes` = official boxes when a bbox file exists (one official box = one polyp; mask fragments inside a box belong to it, snares split masks); mask component boxes when there is no bbox file (64 C3 images); [] for negative sequence frames. A mask component (>= MIN_AREA) whose centroid lies outside every official box is appended as a separate polyp and the frame gets `flag=outside_box_component` (also set if the official file has 0 boxes but the mask has components). `boxes`, `n_polyps`, `official_boxes`, `has_polyp_mask` stay mask-derived (segmentation).
+
+Total polyps: mask components 3556 -> gt_boxes 3458. Positive frames: mask 3121 -> gt 3121. n_gt histogram: {0: 4916, 1: 2880, 2: 196, 3: 30, 4: 6, 5: 2, 6: 2, 7: 1, 8: 1, 9: 1, 11: 1, 15: 1}
+
+| center | polyps mask | polyps gt | positive frames mask | positive frames gt |
+|---|---|---|---|---|
+| C1 | 411 | 413 | 387 | 387 |
+| C2 | 1461 | 1350 | 1233 | 1233 |
+| C3 | 555 | 555 | 456 | 456 |
+| C4 | 437 | 448 | 432 | 432 |
+| C5 | 245 | 245 | 206 | 206 |
+| C6 | 447 | 447 | 407 | 407 |
+
+Flagged frames (3): `data_C2/images_C2/EndoCV2021_001321.jpg` (outside_box_component, n_polyps 2, official 1, n_gt 2), `data_C3/images_C3/C3_EndoCV2021_00368.jpg` (outside_box_component, n_polyps 6, official 4, n_gt 6), `data_C5/images_C5/EndoCV2021_C5_50000109.jpg` (outside_box_component, n_polyps 2, official 1, n_gt 2)
 
 ## Box agreement (mask-derived `boxes` vs `official_boxes`, IoU >= 0.5)
 
@@ -86,4 +103,4 @@ Worst 25 (path: mask boxes / official boxes / matched / mean matched IoU):
 - Mask/image size mismatches: none
 - Masks with pixels > 127 but every component dropped by MIN_AREA: ['data_C2/masks_C2/EndoCV2021_001010_mask.jpg']
 - C3 images with no mask of the same stem: ['C3_EndoCV2021_00489]']; masks with no image: ['C3_EndoCV2021_00489']; bbox files with no image: []
-- C2 images with CSV annotations = 0 but mask pixels > 127: [('data_C2/images_C2/EndoCV2021_001010.jpg', 'data_C2/masks_C2/EndoCV2021_001010_mask.jpg')] (at MIN_AREA=50 it is dropped as a speck, has_polyp=False)
+- C2 images with CSV annotations = 0 but mask pixels > 127: [('data_C2/images_C2/EndoCV2021_001010.jpg', 'data_C2/masks_C2/EndoCV2021_001010_mask.jpg')] (at MIN_AREA=50 it is dropped as a speck, has_polyp_mask=False)

@@ -1,0 +1,12 @@
+# Project environment (Python 3.10). Local laptop: CPU torch is pulled in by ultralytics.
+# On Kaggle do NOT use this file; only `pip install ultralytics==8.4.170` (torch/numpy preinstalled), see kaggle/README.md.
+numpy==2.2.6
+pandas==2.3.3
+pyarrow==25.0.1
+opencv-python-headless==5.0.0.93
+pillow==12.3.0
+pyyaml==6.0.3
+matplotlib==3.10.9
+scipy==1.15.3
+scikit-image==0.25.2
+ultralytics==8.4.170
