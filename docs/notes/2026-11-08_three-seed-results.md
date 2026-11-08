@@ -25,3 +25,5 @@ Recall tối đa ở trung tâm bị loại, IoU 0,1 / 0,5: C1 0,890/0,750; C2 0
 
 ## Hình (đã vẽ lại, đã xem ở kích thước thật)
 `fig_risk_vs_alpha`, `fig_fewshot_budget`, `fig_cluster_budget` — sai số = khoảng giữa các seed (ghi trong caption).
+
+> **Đính chính 2026-11-08:** gộp nguồn theo cụm ở α = 0,10 cũng vượt ở **C1** (rủi ro trung bình theo video 0,113 > 0,10, `conformal_cluster_summary.csv`), không chỉ C4–C6. Gộp nguồn theo ảnh ở C3 nằm sát α (trung bình 0,100; seed 2 = 0,132; 36 % lần lấy mẫu lại vi phạm). Hiệu chuẩn lại theo khung cũng chưa đạt ở C6 (0,126–0,149).
