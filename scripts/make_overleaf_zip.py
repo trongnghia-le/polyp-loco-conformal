@@ -90,6 +90,8 @@ for b in sorted(bibs):
     shutil.copy2(f, STAGE / f.name); copied.append(f.name)
 for name, f in figs.items():
     shutil.copy2(f, STAGE / "figures" / name); copied.append(f"figures/{name}")
+for f in sorted(PAPER.glob("*.cls")) + sorted(PAPER.glob("*.bst")):   # journal template class and reference style
+    shutil.copy2(f, STAGE / f.name); copied.append(f.name)
 
 if not a.no_compile and shutil.which("pdflatex"):
     for r in roots:
