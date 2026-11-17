@@ -1,0 +1,13 @@
+{
+  "title": "polyp-loco-conformal: code for a leave-one-centre-out evaluation of conformal risk control of the polyp miss rate (PolypGen, YOLO11)",
+  "upload_type": "software",
+  "description": "Code for the data audit, video clustering, leave-one-centre-out splits, YOLO11 training and prediction export, detection evaluation, conformal risk control analyses and figures of a multi-centre evaluation of conformal risk control of the polyp miss rate on PolypGen, with an external check on CVC-ClinicDB. No images, masks or annotation-derived files of either dataset are included.",
+  "creators": [
+    {"name": "Le, Trong Nghia", "affiliation": "University of Economics Ho Chi Minh City, Vietnam"},
+    {"name": "Nguyen, Viet Nam", "affiliation": "University of Economics Ho Chi Minh City, Vietnam"},
+    {"name": "Ho, Minh Hieu", "affiliation": "University of Economics Ho Chi Minh City, Vietnam"},
+    {"name": "Nguyen, Thien Bao", "affiliation": "University of Economics Ho Chi Minh City, Vietnam"}
+  ],
+  "license": "AGPL-3.0-only",
+  "keywords": ["colonoscopy", "polyp detection", "conformal risk control", "distribution shift", "multi-centre validation", "PolypGen"]
+}
