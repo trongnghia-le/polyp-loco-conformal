@@ -147,3 +147,5 @@ build(0, folds=("C2", "C3", "C5", "C6"), size="m", name="run_m_seed0_rest", labe
 for seed in (1, 2):
     build(seed, folds=("C1", "C2", "C3"), size="m", name=f"run_m_seed{seed}_a", label=f"YOLO11m seed {seed} (C1-C3)", owner=TEAMMATE)
     build(seed, folds=("C4", "C5", "C6"), size="m", name=f"run_m_seed{seed}_b", label=f"YOLO11m seed {seed} (C4-C6)", owner=TEAMMATE)
+# Rerun: C1 seed 1 failed on 2026-11-08 because GitHub returned 504 when downloading yolo11m.pt (transient)
+build(1, folds=("C1",), size="m", name="run_m_seed1_c1", label="YOLO11m seed 1 (C1 rerun)", owner=TEAMMATE)

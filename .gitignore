@@ -20,3 +20,6 @@ api_key
 # Manuscript drafts stay local (never pushed)
 paper/
 docs/notes/*manuscript*
+
+# figure panels that contain PolypGen frames: not redistributed until the licence is confirmed
+results/figures/fig_qualitative.*

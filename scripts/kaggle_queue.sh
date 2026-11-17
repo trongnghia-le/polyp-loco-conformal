@@ -16,7 +16,7 @@ while [ ${#queue[@]} -gt 0 ]; do
   if [ $busy -lt 2 ]; then
     d=${queue[0]}; out=$($K kernels push -p "outputs/kaggle_kernels/$d" 2>&1 | tail -1); echo "$(date +%H:%M) push $d: $out"
     if echo "$out" | grep -q "successfully pushed"; then pushed+=("$d"); queue=("${queue[@]:1}"); sleep 60; continue
-    elif ! echo "$out" | grep -q "Maximum batch GPU session"; then echo "!!! push failed, stopping"; exit 2; fi
+    elif ! echo "$out" | grep -qE "Maximum batch GPU session|os error|No such host|timed out|Connection"; then echo "!!! push failed, stopping"; exit 2; fi   # GPU limit or network blip (laptop asleep, wifi change): wait and retry
   fi
   sleep 600
 done
