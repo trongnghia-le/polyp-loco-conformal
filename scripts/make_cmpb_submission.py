@@ -33,8 +33,8 @@ def main():
     if not bbl.exists():
         sys.exit("run scripts/make_overleaf_zip.py first (no outputs/overleaf/stage/main.bbl)")
     OUT.mkdir(parents=True, exist_ok=True)
-    for f in OUT.iterdir():                     # regenerate everything except the Word files built elsewhere
-        if f.suffix.lower() != ".docx":
+    for f in OUT.iterdir():                     # regenerate everything except the Word files just built by
+        if f.suffix.lower() != ".docx":         # paper/build_submission_docs.py (run that first)
             shutil.rmtree(f) if f.is_dir() else f.unlink()
     SRC.mkdir()
 
@@ -105,6 +105,10 @@ def main():
     print(pkg, f"{pkg.stat().st_size / 1e6:.2f} MB")
     for n in zipfile.ZipFile(pkg).namelist():
         print("  ", n)
+    # leave only the package: every loose file is inside it and is rebuilt on the next run
+    for f in OUT.iterdir():
+        if f != pkg:
+            shutil.rmtree(f) if f.is_dir() else f.unlink()
 
 
 if __name__ == "__main__":
